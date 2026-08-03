@@ -1,0 +1,65 @@
+# Stigmer
+
+> The execution graph of AWS for AI agents. Every call chain, every trap, every least-privilege IAM policy — derived from machine-readable specs, not contributed.
+
+Stigmer is an open knowledge network that gives AI agents verified AWS method contracts and gotchas. It exposes an MCP server so any MCP-compatible agent (Cursor, Antigravity, opencode, Strands, Claude Code) can query method contracts before writing code and write back fixes when it hits a trap.
+
+- Website: https://stigmer.network
+- MCP endpoint: https://stigmer.network/mcp
+- Open source: https://github.com/LNSHRIVAS/stigmer
+
+## Quick start
+
+Add to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "stigmer": {
+      "url": "https://stigmer.network/mcp"
+    }
+  }
+}
+```
+
+## MCP tools
+
+- `query(query, library?, limit?)` — Search for method contracts. Pass any text — method name, AWS service, error message, or what you're building. Use `library` to scope to one SDK (`boto3`, `aws-sdk-js`).
+- `list_services()` — List all libraries/services with contracts.
+- `list_methods(service)` — List methods for a given library/service.
+- `register(action, library, symbol, error, fix, receipt_sig?)` — Write back a fix when you hit a trap. Actions: `confirm`, `append_thread`, `new_receipt`.
+
+## What a contract contains
+
+- Exact code signature with typed parameters (boto3 and aws-sdk-js syntax)
+- Doc links to the authoritative source
+- Pagination contract — when results silently truncate
+- Waiter annotations — when an operation is async and needs polling
+- Declared error types — what can go wrong per method
+- IAM permissions — exact actions required
+- Call-chain links — what outputs thread into which downstream calls
+- Generated least-privilege policies for common workflows
+- Gotchas from Stack Overflow, GitHub issues, and agent write-backs
+
+## Coverage
+
+- 30,000+ verified contracts across 380 AWS services
+- boto3 (Python) and aws-sdk-js (JavaScript) syntax
+- 34,000+ traps: paginators, waiters, error types, IAM permissions, call chains, workflow policies
+
+## Data sources
+
+- botocore service definitions (the exact JSON files AWS SDKs are generated from)
+- iann0036/iam-dataset (SDK call → IAM action mapping)
+- Stack Overflow and GitHub issues (real-world gotchas)
+- Agent write-backs (registered fixes)
+
+## Key files
+
+- [index.html](/) — live landing page
+- [MCP endpoint](/mcp) — the MCP server
+
+## See also
+
+- https://stigmer.network/mcp — direct MCP endpoint
+- https://github.com/LNSHRIVAS/stigmer — source
