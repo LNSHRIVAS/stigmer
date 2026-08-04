@@ -30,6 +30,7 @@ TOOLS = [{
     "description": "Search for verified method contracts for any library. Pass any text — library name, method, what you're building, or an error you hit.",
     "inputSchema": {"type": "object", "properties": {
         "query": {"type": "string", "description": "What are you looking for? A method name, a library, an error message, or what you're building. Examples: 's3 put_object', 'auto_gptq import', 'pandas merge', 'ImportError peft'."},
+        "library": {"type": "string", "description": "Optional. Scope to one library ('boto3', 'aws-sdk-js', 'pandas'). Use this for precise results. If omitted and a service is named, returns all libraries for that service."},
         "error_type": {"type": "string", "description": "(deprecated — use query instead) Error type if searching by error"},
         "sig": {"type": "string"},
         "packages": {"type": "array", "items": {"type": "string"}},
@@ -111,13 +112,15 @@ def handle_request(req):
             if tool == "query":
                 q = a.get("query") or a.get("error_message") or ""
                 results = query_similar(error_type=a.get("error_type"), error_message=q,
-                    sig=a.get("sig"), limit=a.get("limit", 10))
+                    sig=a.get("sig"), limit=a.get("limit", 10), library=a.get("library"))
                 pkgs = a.get("packages")
                 if pkgs:
                     stack = check_stack(packages=pkgs)
                     for s in stack:
                         if not any(r["sig"] == s["sig"] for r in results):
                             results.append(s)
+                if not results and not q:
+                    return _ok(rid, "No facet detected. Narrow your query — include a library ('boto3', 'aws-sdk-js') or a service name ('s3', 'ec2') so results can be scoped.")
                 return _ok(rid, json.dumps(results, indent=2))
 
             if tool == "list_services":
@@ -250,6 +253,13 @@ query("auto_gptq import peft")
 query("pandas merge type mismatch")
 query("dynamodb query pagination")
 ```
+
+For precise results, scope with the `library` facet (especially once multiple SDKs exist for the same service):
+```
+query("list objects", library="boto3")
+query("list objects", library="aws-sdk-js")
+```
+If you omit `library` and name a service, results include all SDKs for that service (each tagged with target.library).
 
 Returns: runnable code + required params + doc_url + any known gotchas.
 

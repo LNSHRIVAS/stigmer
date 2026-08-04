@@ -28,15 +28,13 @@ Works with Cursor, Antigravity, opencode, Strands Agents SDK, and any MCP-compat
 
 ### Strands Agents SDK
 
-Strands is MCP-native. Add Stigmer as an HTTP MCP server:
+Strands is MCP-native. Add Stigmer as an MCP server:
 
 ```python
-from strands_agents import Agent, LocalAgentConfig
-from strands_agents.types import McpHttpServer
+from strands import Agent
+from strands.tools.mcp import MCPClient
 
-config = LocalAgentConfig(
-    mcp_servers=[McpHttpServer(name="stigmer", url="https://stigmer.network/mcp")],
-)
+agent = Agent(tools=[MCPClient("https://stigmer.network/mcp")])
 ```
 
 See `strands_example.py` for a full example.
