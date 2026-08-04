@@ -1,0 +1,10 @@
+LICENSE
+README.md
+pyproject.toml
+src/strands_stigmer/__init__.py
+src/strands_stigmer/py.typed
+src/strands_stigmer.egg-info/PKG-INFO
+src/strands_stigmer.egg-info/SOURCES.txt
+src/strands_stigmer.egg-info/dependency_links.txt
+src/strands_stigmer.egg-info/requires.txt
+src/strands_stigmer.egg-info/top_level.txt

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "strands-stigmer"
+version = "0.1.0"
+description = "The execution graph of AWS for Strands agents. Call chains, traps, and least-privilege IAM policies."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+keywords = ["aws", "mcp", "agents", "strands", "iam", "boto3"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "strands-agents>=0.1",
+    "mcp>=1.0",
+]
+
+[project.urls]
+Homepage = "https://stigmer.network"
+Source = "https://github.com/LNSHRIVAS/stigmer"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+strands_stigmer = ["py.typed"]
