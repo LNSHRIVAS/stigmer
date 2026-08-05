@@ -2,7 +2,7 @@
 
 The execution graph of AWS for [Strands](https://strandsagents.com) agents.
 
-A single tool that gives your agent verified AWS method contracts: required params, IAM permissions, pagination contracts, call-chain links, and known traps — plus generated least-privilege IAM policies for common workflows.
+A single tool that gives your agent verified AWS method contracts: required params, IAM permissions, pagination contracts, call-chain links, and known traps, plus generated least-privilege IAM policies for common workflows.
 
 Backed by [Stigmer](https://stigmer.network), an open MCP knowledge network with 30,000+ contracts across 380 services.
 
@@ -27,8 +27,8 @@ agent("Upload a 5GB file to S3 with KMS encryption. What's the sequence and IAM 
 
 `stigmer_query(query, library="")`
 
-- `query` — what you're building or the error you hit (e.g. `"s3 multipart upload kms"`)
-- `library` — optional, scope to one SDK: `"boto3"` or `"aws-sdk-js"`. Omit to get all SDKs.
+- `query` - what you're building or the error you hit (e.g. `"s3 multipart upload kms"`)
+- `library` - optional, scope to one SDK: `"boto3"` or `"aws-sdk-js"`. Omit to get all SDKs.
 
 ## Write back
 
