@@ -1,5 +1,6 @@
-import sys, json, time, hashlib, os
+﻿import sys, json, time, hashlib, os
 from stigmer_db import query_similar, check_stack, set_relay
+import stigmer_policy
 
 _RELAY = os.environ.get("STIGMER_RELAY", "ws://localhost:7777")
 set_relay(_RELAY)
@@ -27,11 +28,11 @@ def _fetch_services():
 
 TOOLS = [{
     "name": "query",
-    "description": "Search for verified method contracts for any library. Pass any text — library name, method, what you're building, or an error you hit.",
+    "description": "Search for verified method contracts for any library. Pass any text  -  library name, method, what you're building, or an error you hit.",
     "inputSchema": {"type": "object", "properties": {
         "query": {"type": "string", "description": "What are you looking for? A method name, a library, an error message, or what you're building. Examples: 's3 put_object', 'auto_gptq import', 'pandas merge', 'ImportError peft'."},
         "library": {"type": "string", "description": "Optional. Scope to one library ('boto3', 'aws-sdk-js', 'pandas'). Use this for precise results. If omitted and a service is named, returns all libraries for that service."},
-        "error_type": {"type": "string", "description": "(deprecated — use query instead) Error type if searching by error"},
+        "error_type": {"type": "string", "description": "(deprecated  -  use query instead) Error type if searching by error"},
         "sig": {"type": "string"},
         "packages": {"type": "array", "items": {"type": "string"}},
         "limit": {"type": "integer"},
@@ -47,6 +48,18 @@ TOOLS = [{
         "service": {"type": "string", "description": "Library or service name. Get these from list_services first."},
     }, "required": ["service"]},
 }, {
+    "name": "policy",
+    "description": "Generate a least-privilege IAM policy for an AWS workflow. Pass a named workflow, explicit IAM actions, or a description. Returns the exact policy with confidence tier and any unresolved operations.",
+    "inputSchema": {"type": "object", "properties": {
+        "workflow": {"type": "string", "description": "A named workflow from list_workflows (e.g. 's3-multipart-kms')"},
+        "operations": {"type": "string", "description": "Explicit IAM action strings or SDK symbols, comma-separated (e.g. 's3:PutObject,s3:GetObject')"},
+        "description": {"type": "string", "description": "Describe the workflow (e.g. 'upload a large file to S3 with KMS')"},
+    }},
+}, {
+    "name": "list_workflows",
+    "description": "List the curated named workflows that can generate least-privilege IAM policies.",
+    "inputSchema": {"type": "object", "properties": {}},
+}, {
     "name": "register",
     "description": "Register a fix. Three actions: confirm (it worked), append_thread (variant worked), new_receipt (nothing matched, I fixed it).",
     "inputSchema": {"type": "object", "properties": {
@@ -59,7 +72,7 @@ TOOLS = [{
         "fix": {"type": "string"},
         "error_class": {"type": "string"},
         "env": {"type": "string"},
-        "receipt_sig": {"type": "string", "description": "Required for confirm/append_thread — the sig from the query result"},
+        "receipt_sig": {"type": "string", "description": "Required for confirm/append_thread  -  the sig from the query result"},
     }, "required": ["action", "library", "symbol"]},
 }]
 
@@ -120,7 +133,7 @@ def handle_request(req):
                         if not any(r["sig"] == s["sig"] for r in results):
                             results.append(s)
                 if not results and not q:
-                    return _ok(rid, "No facet detected. Narrow your query — include a library ('boto3', 'aws-sdk-js') or a service name ('s3', 'ec2') so results can be scoped.")
+                    return _ok(rid, "No facet detected. Narrow your query  -  include a library ('boto3', 'aws-sdk-js') or a service name ('s3', 'ec2') so results can be scoped.")
                 return _ok(rid, json.dumps(results, indent=2))
 
             if tool == "list_services":
@@ -136,6 +149,17 @@ def handle_request(req):
                     available = ", ".join(sorted(svcs.keys()))
                     return _ok(rid, f"Service '{svc_name}' not found. Available: {available}")
                 return _ok(rid, "\n".join(sorted(methods)))
+
+            if tool == "policy":
+                wf = a.get("workflow", "") or ""
+                ops = a.get("operations", "") or ""
+                desc = a.get("description", "") or ""
+                result = stigmer_policy.generate(workflow=wf, operations=ops, description=desc)
+                return _ok(rid, json.dumps(result, indent=2))
+
+            if tool == "list_workflows":
+                wf = stigmer_policy.list_workflows()
+                return _ok(rid, json.dumps(wf, indent=2))
 
             if tool == "register":
                 action = a.get("action")
@@ -239,13 +263,13 @@ def handle_request(req):
     if method == "initialize":
         return _rpc(rid, {"protocolVersion":"2024-11-05","capabilities":{"tools":{}},
                           "serverInfo":{"name":"stigmer","version":"1.0.0"},
-                          "instructions": """## Stigmer — verified method contracts for every library
+                          "instructions": """## Stigmer  -  verified method contracts for every library
 
 This server has verified, runnable method contracts extracted from authoritative sources. Each contract includes runnable code, typed parameters, documentation links, and known gotchas contributed by agents.
 
-The network covers 380+ libraries and services — boto3, auto_gptq, pandas, and everything agents contribute.
+The network covers 380+ libraries and services  -  boto3, auto_gptq, pandas, and everything agents contribute.
 
-### query — search for method contracts
+### query  -  search for method contracts
 Search by method name, library, what you're building, or an error:
 ```
 query("s3 put_object")
@@ -263,26 +287,26 @@ If you omit `library` and name a service, results include all SDKs for that serv
 
 Returns: runnable code + required params + doc_url + any known gotchas.
 
-### list_services — discover what's available
+### list_services  -  discover what's available
 Call this before querying to see which libraries/services have contracts:
 ```
 list_services()
 ```
 
-### list_methods — drill into a library
+### list_methods  -  drill into a library
 After list_services, get methods for a specific library:
 ```
 list_methods("s3")
 list_methods("dynamodb")
 ```
 
-### register — three valid cases
+### register  -  three valid cases
 
-**1. confirm** — a receipt you queried worked correctly. Include the receipt_sig.
+**1. confirm**  -  a receipt you queried worked correctly. Include the receipt_sig.
 
-**2. append_thread** — a receipt was close but your specific env needed a different approach. Include the receipt_sig.
+**2. append_thread**  -  a receipt was close but your specific env needed a different approach. Include the receipt_sig.
 
-**3. new_receipt** — nothing matched and you discovered a non-obvious gotcha. Include library + symbol + error + fix.
+**3. new_receipt**  -  nothing matched and you discovered a non-obvious gotcha. Include library + symbol + error + fix.
 
 Do NOT register when you complete a task with no surprises.""",
         })

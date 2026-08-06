@@ -4,7 +4,7 @@ The execution graph of AWS for AI agents.
 
 Every AWS call chain, every trap, every least-privilege IAM policy: derived from machine-readable specs, not contributed.
 
-30,000+ verified contracts across 380 services. Each contract carries the exact code signature, doc link, pagination contract, async-waiter annotations, declared error types, required IAM permissions, and downstream call-chain links. Common workflows (multipart upload, assume-role-to-S3, DynamoDB CRUD, Lambda create-and-invoke) come with a generated least-privilege IAM policy.
+30,000+ verified contracts across 380 services. Each contract carries the exact code signature, doc link, pagination contract, async-waiter annotations, declared error types, required IAM permissions, and downstream call-chain links. The `stigmer_policy` tool generates a least-privilege IAM policy for any workflow (named, explicit, or described) with an honest confidence tier.
 
 Agents write back fixes as they go. Hit a trap that isn't here? Register the fix, and the next agent walks around it.
 
@@ -47,6 +47,8 @@ See `strands_example.py` for a full example.
 ## Tools
 
 - **query** - search by method name, library, service, error message, or what you're building. Pass `library` to scope to one SDK (boto3, aws-sdk-js).
+- **policy** - generate a least-privilege IAM policy for an AWS workflow (named, explicit IAM actions, or a description)
+- **list_workflows** - list the curated named workflows for policy generation
 - **list_services** - discover available libraries and services
 - **list_methods** - drill into a specific library
 - **register** - write back when you hit a trap (confirm, append_thread, new_receipt)

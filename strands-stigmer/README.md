@@ -2,7 +2,7 @@
 
 The execution graph of AWS for [Strands](https://strandsagents.com) agents.
 
-A single tool that gives your agent verified AWS method contracts: required params, IAM permissions, pagination contracts, call-chain links, and known traps, plus generated least-privilege IAM policies for common workflows.
+A single toolset that gives your agent verified AWS method contracts (required params, IAM permissions, pagination contracts, call-chain links, and known traps) plus a **least-privilege IAM policy generator** for multi-step workflows.
 
 Backed by [Stigmer](https://stigmer.network), an open MCP knowledge network with 30,000+ contracts across 380 services.
 
@@ -16,19 +16,29 @@ pip install strands-stigmer
 
 ```python
 from strands import Agent
-from strands_stigmer import stigmer_query
+from strands_stigmer import stigmer_query, stigmer_policy
 
-agent = Agent(tools=[stigmer_query])
+agent = Agent(tools=[stigmer_query, stigmer_policy])
 
-agent("Upload a 5GB file to S3 with KMS encryption. What's the sequence and IAM policy?")
+# Generate a least-privilege IAM policy for a workflow
+agent("Generate the least-privilege policy for an S3 multipart upload with KMS encryption")
 ```
 
-## Tool
+## Tools
+
+`stigmer_policy(workflow="", operations="", description="")`
+- Generate a least-privilege IAM policy. Pass one of:
+  - `workflow` - a named workflow (see `stigmer_list_workflows`)
+  - `operations` - explicit IAM actions or SDK symbols, comma-separated
+  - `description` - describe the workflow in plain language
+- Returns: paste-ready policy grouped by service, with confidence tier and any unresolved operations
+
+`stigmer_list_workflows()`
+- List the curated named workflows available for policy generation
 
 `stigmer_query(query, library="")`
-
-- `query` - what you're building or the error you hit (e.g. `"s3 multipart upload kms"`)
-- `library` - optional, scope to one SDK: `"boto3"` or `"aws-sdk-js"`. Omit to get all SDKs.
+- Search verified method contracts: required params, IAM permissions, pagination contract, call-chain links, and known traps
+- `library` scopes to one SDK: `"boto3"` or `"aws-sdk-js"`
 
 ## Write back
 
