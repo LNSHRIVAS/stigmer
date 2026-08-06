@@ -2,7 +2,7 @@
 
 The execution graph of AWS for [Strands](https://strandsagents.com) agents.
 
-A single toolset that gives your agent verified AWS method contracts (required params, IAM permissions, pagination contracts, call-chain links, and known traps), a **least-privilege IAM policy generator** for multi-step workflows, a **pre-flight authorization check** that asks AWS's own policy simulator whether an operation is allowed before it executes, and a **pre-action authorization hook** that blocks denied tool calls before they run.
+A single toolset that gives your agent verified AWS method contracts (required params, IAM permissions, pagination contracts, call-chain links, and known traps), a **least-privilege IAM policy generator** for multi-step workflows, a **pre-flight authorization check** that asks AWS's own policy simulator whether an operation is allowed before it executes, a **pre-action authorization hook** that blocks denied tool calls before they run, and a **scoped `use_aws`** that runs each call against an assumed role bounded by a least-privilege session policy.
 
 Backed by [Stigmer](https://stigmer.network), an open MCP knowledge network with 30,000+ contracts across 380 services.
 
@@ -64,6 +64,13 @@ Every `use_aws` tool call is now checked before execution. If AWS's own policy s
 - For each `use_aws` call, resolves the operation to its required IAM actions and asks AWS's own simulator whether the current identity allows them
 - `evaluation: denied` cancels the call and lists the missing permissions; `allowed` passes through; `unknown` passes through by default, or blocks when `fail_closed=True`
 - Covers any tool, not just `use_aws`; no upstream changes or approval required
+
+`stigmer_use_aws(service_name, operation_name, parameters={}, region="us-west-2", profile_name=None, role_arn=None, session_policy=None)`
+- A drop-in replacement for `use_aws` that adds per-call credential scoping
+- With `role_arn` + `session_policy`, the call runs against an `sts:AssumeRole` session whose effective permissions are the intersection of the role's policies and the supplied least-privilege policy
+- Without them, it behaves exactly like `use_aws` (ambient session)
+- `session_policy` without `role_arn` raises a clear error: the ambient session is fixed at process launch and cannot be narrowed, so scoping requires an assumed role
+- This is the working demonstration of the `use_aws` feature request (strands-agents/tools#337 follow-up): scoping plumbed into the tool instead of a racy temp-profile workaround
 
 ## Write back
 

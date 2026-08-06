@@ -7,17 +7,23 @@ least-privilege policy for a workflow; write back when you hit a trap.
 Usage:
     from strands import Agent
     from strands_stigmer import stigmer_query, stigmer_policy, stigmer_authorize, stigmer_verify
+    from strands_stigmer import stigmer_use_aws
     from strands_stigmer.hooks import StigmerAuthHook
 
     agent = Agent(
         tools=[stigmer_query, stigmer_policy, stigmer_authorize, stigmer_verify],
         hooks=[StigmerAuthHook()],   # authorize AWS tool calls before they execute
     )
+
+    # Scoped execution: replace use_aws with the least-privilege version.
+    scoped = Agent(tools=[stigmer_use_aws])
 """
 
 from strands import tool
 
 DEFAULT_URL = "https://stigmer.network/mcp"
+
+from .use_aws import stigmer_use_aws  # noqa: E402
 
 
 def _mcp_call(tool_name: str, args: dict, url: str) -> str:
