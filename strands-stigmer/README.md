@@ -2,7 +2,7 @@
 
 The execution graph of AWS for [Strands](https://strandsagents.com) agents.
 
-A single toolset that gives your agent verified AWS method contracts (required params, IAM permissions, pagination contracts, call-chain links, and known traps), a **least-privilege IAM policy generator** for multi-step workflows, and a **pre-flight authorization check** that asks AWS's own policy simulator whether an operation is allowed before it executes.
+A single toolset that gives your agent verified AWS method contracts (required params, IAM permissions, pagination contracts, call-chain links, and known traps), a **least-privilege IAM policy generator** for multi-step workflows, a **pre-flight authorization check** that asks AWS's own policy simulator whether an operation is allowed before it executes, and a **pre-action authorization hook** that blocks denied tool calls before they run.
 
 Backed by [Stigmer](https://stigmer.network), an open MCP knowledge network with 30,000+ contracts across 380 services.
 
@@ -17,8 +17,12 @@ pip install strands-stigmer
 ```python
 from strands import Agent
 from strands_stigmer import stigmer_query, stigmer_policy, stigmer_authorize
+from strands_stigmer.hooks import StigmerAuthHook
 
-agent = Agent(tools=[stigmer_query, stigmer_policy, stigmer_authorize])
+agent = Agent(
+    tools=[stigmer_query, stigmer_policy, stigmer_authorize],
+    hooks=[StigmerAuthHook()],
+)
 
 # Generate a least-privilege IAM policy for a workflow
 agent("Generate the least-privilege policy for an S3 multipart upload with KMS encryption")
@@ -26,6 +30,8 @@ agent("Generate the least-privilege policy for an S3 multipart upload with KMS e
 # Pre-flight check: is s3:PutObject allowed for the current role?
 agent("Before you call S3, check whether I'm authorized to put objects")
 ```
+
+Every `use_aws` tool call is now checked before execution. If AWS's own policy simulator reports the current identity is denied, the call is cancelled with the missing permissions listed. When the simulator cannot answer (`unknown`), the call passes through by default; pass `StigmerAuthHook(fail_closed=True)` to block unverifiable calls too.
 
 ## Tools
 
@@ -52,6 +58,12 @@ agent("Before you call S3, check whether I'm authorized to put objects")
 `stigmer_query(query, library="")`
 - Search verified method contracts: required params, IAM permissions, pagination contract, call-chain links, and known traps
 - `library` scopes to one SDK: `"boto3"` or `"aws-sdk-js"`
+
+`StigmerAuthHook(fail_closed=False)`
+- A `BeforeToolCallEvent` hook that authorizes AWS tool calls before they execute
+- For each `use_aws` call, resolves the operation to its required IAM actions and asks AWS's own simulator whether the current identity allows them
+- `evaluation: denied` cancels the call and lists the missing permissions; `allowed` passes through; `unknown` passes through by default, or blocks when `fail_closed=True`
+- Covers any tool, not just `use_aws`; no upstream changes or approval required
 
 ## Write back
 

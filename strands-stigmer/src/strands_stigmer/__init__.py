@@ -7,8 +7,12 @@ least-privilege policy for a workflow; write back when you hit a trap.
 Usage:
     from strands import Agent
     from strands_stigmer import stigmer_query, stigmer_policy, stigmer_authorize, stigmer_verify
+    from strands_stigmer.hooks import StigmerAuthHook
 
-    agent = Agent(tools=[stigmer_query, stigmer_policy, stigmer_authorize, stigmer_verify])
+    agent = Agent(
+        tools=[stigmer_query, stigmer_policy, stigmer_authorize, stigmer_verify],
+        hooks=[StigmerAuthHook()],   # authorize AWS tool calls before they execute
+    )
 """
 
 from strands import tool

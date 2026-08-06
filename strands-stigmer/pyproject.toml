@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "strands-stigmer"
-version = "0.3.0"
-description = "The execution graph of AWS for Strands agents. Call chains, traps, least-privilege IAM policies, and pre-flight authorization."
+version = "0.4.0"
+description = "The execution graph of AWS for Strands agents. Call chains, traps, least-privilege IAM policies, pre-flight authorization, and a pre-action authorization hook."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
