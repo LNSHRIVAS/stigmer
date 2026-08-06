@@ -136,10 +136,16 @@ opa eval -b bundle.tar.gz \
   reference architecture; this is the "what should the policy say" input
   that hand-written `allow_actor` maps leave empty
 
-## Why prospective, not retrospective
+## Why operation-level
 
-AWS IAM Access Analyzer generates policies from CloudTrail over a time window
-(`start_policy_generation`): it infers permissions from what already ran.
-An agent needs the policy before its first call, not after twenty days of
-logs. Stigmer's map is derived from machine-readable service definitions, so
-it is available up front and stays current as the services change.
+Prospective policy generation is not new. Salesforce's `policy_sentry`
+creates least-privilege policies from access levels and resource ARNs, and
+AWS IAM Access Analyzer infers them retrospectively from CloudTrail over a
+time window (`start_policy_generation`). Both are mature tools for a human
+authoring a policy ahead of time.
+
+Neither takes an *operation* as the input. An agent knows the API call it is
+about to make (`s3.PutObject`), not an abstract CRUD level it wants. Stigmer's
+map is keyed to the operation, derived from machine-readable service
+definitions, so it is available before the first call and stays current as
+the services change.

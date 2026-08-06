@@ -145,9 +145,11 @@ verify(policy, operations) -&gt; verdict       # the provider's simulator</code>
 
     <p>None of this needs to be speculative. There is a live, public implementation of the map: <a href="/">Stigmer</a> (<code>https://stigmer.network/mcp</code>) resolves boto3 operations to their required IAM actions from machine-readable sources, generates least-privilege policies, and verifies them against AWS's own <code>SimulateCustomPolicy</code> - confirming a generated policy grants what was intended and nothing extra.</p>
 
-    <h3>Why AWS doesn't ship this: prospective versus retrospective</h3>
+    <h3>What already exists: policy generators for humans</h3>
 
-    <p>AWS does have a policy generator. IAM Access Analyzer's <code>start_policy_generation</code> takes a principal and a CloudTrail trail with a start and end time, and infers permissions from what actually ran in that window. It is retrospective: you over-grant first, run for weeks, then narrow from the logs. An agent needs its policy before the first call, not after twenty days of CloudTrail. The map has to be derived from what an operation <em>requires</em>, which is knowable from the service definition, not from what happened to run.</p>
+    <p>Prospective policy generation is not new. Salesforce's <code>policy_sentry</code> has done it since 2019 - it "allows users to create least-privilege IAM policies in a matter of seconds... scoped down according to access levels and resources." AWS's IAM Access Analyzer is the retrospective complement: <code>start_policy_generation</code> takes a principal and a CloudTrail trail with a start and end time, and infers permissions from what actually ran. One is preventive, the other reactive. Both are mature tools for a human authoring a policy ahead of time.</p>
+
+    <p>What those tools do not do is take an <em>operation</em> as the input. <code>policy_sentry</code> wants an access level and a resource ARN - a human says "Read on this bucket" and gets a policy. The gap is that an agent knows the API call it is about to make, not an abstract CRUD level it wants. <code>s3.PutObject</code> in, required actions out: that is the input shape nobody's generator takes, and it is the one an agent call path needs.</p>
 
     <h3>The map as data: an OPA bundle service</h3>
 
@@ -165,7 +167,7 @@ verify(policy, operations) -&gt; verdict       # the provider's simulator</code>
 
     <h2>What this is and is not</h2>
 
-    <p>It is the missing map, and the three enforcement shapes it enables: check-before-call, scope-the-call, and policy-as-code for engines that already enforce. It is the piece every authorization layer needs and no provider ships.</p>
+    <p>It is the operation-level map, and the three enforcement shapes it enables: check-before-call, scope-the-call, and policy-as-code for engines that already enforce. Policy generators for humans exist - <code>policy_sentry</code> does this well. What no one ships is the map keyed to the operation an agent is about to call, delivered in the format an enforcement engine consumes at runtime.</p>
 
     <p>It is not a silver bullet. A check before a tool call does not replace a least-privilege role, and a least-privilege role does not replace conditions or boundaries. The layers compose. What the MCP 2026-07-28 revision did - hardening the handshake, deliberately leaving the invocation to implementers - made that composition the implementer's job. The map and the per-invocation check are the parts of the job that were missing.</p>
 
