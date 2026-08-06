@@ -6,9 +6,9 @@ least-privilege policy for a workflow; write back when you hit a trap.
 
 Usage:
     from strands import Agent
-    from strands_stigmer import stigmer_query, stigmer_policy
+    from strands_stigmer import stigmer_query, stigmer_policy, stigmer_authorize, stigmer_verify
 
-    agent = Agent(tools=[stigmer_query, stigmer_policy])
+    agent = Agent(tools=[stigmer_query, stigmer_policy, stigmer_authorize, stigmer_verify])
 """
 
 from strands import tool
@@ -93,3 +93,63 @@ def stigmer_list_workflows() -> str:
         JSON array of workflow names (e.g. "s3-multipart-kms").
     """
     return _mcp_call("list_workflows", {}, DEFAULT_URL)
+
+
+@tool
+def stigmer_authorize(operations: str = "", workflow: str = "", principal_arn: str = "") -> str:
+    """Pre-flight authorization check before calling an AWS operation.
+
+    Resolves the IAM actions the operation requires, then asks AWS's own
+    policy simulator (SimulatePrincipalPolicy) whether the current role (or a
+    given principal) allows them. Returns resolution (exact|partial|unresolved)
+    and evaluation (allowed|denied|unknown) as separate fields. Evaluation is
+    only populated when the calling environment has AWS credentials.
+
+    Args:
+        operations: IAM actions or SDK symbols, comma-separated
+            (e.g. "s3:PutObject" or "s3.PutObject").
+        workflow: A named workflow (e.g. "s3-multipart-kms").
+        principal_arn: Optional. IAM role/user ARN to simulate against.
+            Defaults to the current caller via sts:GetCallerIdentity.
+
+    Returns:
+        JSON with resolution, required_actions, evaluation, role_checked,
+        missing_permissions, and the simulator's documented caveats.
+    """
+    args = {}
+    if operations:
+        args["operations"] = operations
+    if workflow:
+        args["workflow"] = workflow
+    if principal_arn:
+        args["principal_arn"] = principal_arn
+    return _mcp_call("authorize", args, DEFAULT_URL)
+
+
+@tool
+def stigmer_verify(workflow: str = "", operations: str = "", policy: str = "") -> str:
+    """Verify a generated policy against AWS's own policy evaluation engine.
+
+    Feeds the policy to SimulateCustomPolicy and confirms it grants exactly
+    the intended operations and nothing extra. Returns verified
+    (True|False|unknown), grants_all, and grants_extra. Verified is only
+    populated when the calling environment has AWS credentials.
+
+    Args:
+        workflow: A named workflow to generate and then verify
+            (e.g. "s3-multipart-upload").
+        operations: Intended IAM actions, comma-separated. Required if policy
+            is provided.
+        policy: Optional. A complete IAM policy document as JSON text.
+
+    Returns:
+        JSON with verified, grants_all, grants_extra, decisions, and caveats.
+    """
+    args = {}
+    if workflow:
+        args["workflow"] = workflow
+    if operations:
+        args["operations"] = operations
+    if policy:
+        args["policy"] = policy
+    return _mcp_call("verify", args, DEFAULT_URL)

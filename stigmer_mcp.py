@@ -60,6 +60,22 @@ TOOLS = [{
     "description": "List the curated named workflows that can generate least-privilege IAM policies.",
     "inputSchema": {"type": "object", "properties": {}},
 }, {
+    "name": "authorize",
+    "description": "Pre-flight authorization check for an AWS operation. Resolves the IAM actions the operation requires, then asks AWS's own policy simulator (SimulatePrincipalPolicy) whether the current role (or a given principal) allows them. Returns resolution (exact|partial|unresolved) and evaluation (allowed|denied|unknown) as separate fields. Requires AWS credentials; without them evaluation=unknown with the reason.",
+    "inputSchema": {"type": "object", "properties": {
+        "operations": {"type": "string", "description": "IAM action strings or SDK symbols, comma-separated (e.g. 's3:PutObject' or 's3.PutObject')"},
+        "workflow": {"type": "string", "description": "A named workflow from list_workflows (e.g. 's3-multipart-kms')"},
+        "principal_arn": {"type": "string", "description": "Optional. IAM role/user ARN to simulate against. Defaults to the current caller via sts:GetCallerIdentity."},
+    }},
+}, {
+    "name": "verify",
+    "description": "Feed a generated policy back to AWS's own policy evaluation engine (SimulateCustomPolicy) and confirm it grants exactly the intended operations and nothing extra. Returns verified (True|False|unknown), grants_all, grants_extra. Requires AWS credentials; without them verified=unknown with the reason. Wildcarded operations are expanded to concrete actions first.",
+    "inputSchema": {"type": "object", "properties": {
+        "workflow": {"type": "string", "description": "A named workflow from list_workflows to generate and then verify"},
+        "operations": {"type": "string", "description": "Intended IAM actions, comma-separated. Required if policy is provided."},
+        "policy": {"type": "string", "description": "Optional. A complete IAM policy JSON document to verify."},
+    }},
+}, {
     "name": "register",
     "description": "Register a fix. Three actions: confirm (it worked), append_thread (variant worked), new_receipt (nothing matched, I fixed it).",
     "inputSchema": {"type": "object", "properties": {
@@ -160,6 +176,25 @@ def handle_request(req):
             if tool == "list_workflows":
                 wf = stigmer_policy.list_workflows()
                 return _ok(rid, json.dumps(wf, indent=2))
+
+            if tool == "authorize":
+                ops = a.get("operations", "") or ""
+                wf = a.get("workflow", "") or ""
+                principal = a.get("principal_arn", "") or None
+                result = stigmer_policy.authorize(operations=ops, workflow=wf, principal_arn=principal)
+                return _ok(rid, json.dumps(result, indent=2))
+
+            if tool == "verify":
+                ops = a.get("operations", "") or ""
+                wf = a.get("workflow", "") or ""
+                policy_doc = a.get("policy", "") or None
+                if policy_doc:
+                    try:
+                        policy_doc = json.loads(policy_doc) if isinstance(policy_doc, str) else policy_doc
+                    except Exception as e:
+                        return _err(rid, -32602, f"policy must be valid JSON: {e}")
+                result = stigmer_policy.verify(workflow=wf, operations=ops, policy=policy_doc)
+                return _ok(rid, json.dumps(result, indent=2))
 
             if tool == "register":
                 action = a.get("action")
@@ -262,7 +297,7 @@ def handle_request(req):
             return _err(rid, -32603, f"{type(e).__name__}: {e}")
     if method == "initialize":
         return _rpc(rid, {"protocolVersion":"2024-11-05","capabilities":{"tools":{}},
-                          "serverInfo":{"name":"stigmer","version":"1.0.0"},
+                          "serverInfo":{"name":"stigmer","version":"1.3.0"},
                           "instructions": """## Stigmer  -  verified method contracts for every library
 
 This server has verified, runnable method contracts extracted from authoritative sources. Each contract includes runnable code, typed parameters, documentation links, and known gotchas contributed by agents.

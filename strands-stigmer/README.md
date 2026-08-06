@@ -2,7 +2,7 @@
 
 The execution graph of AWS for [Strands](https://strandsagents.com) agents.
 
-A single toolset that gives your agent verified AWS method contracts (required params, IAM permissions, pagination contracts, call-chain links, and known traps) plus a **least-privilege IAM policy generator** for multi-step workflows.
+A single toolset that gives your agent verified AWS method contracts (required params, IAM permissions, pagination contracts, call-chain links, and known traps), a **least-privilege IAM policy generator** for multi-step workflows, and a **pre-flight authorization check** that asks AWS's own policy simulator whether an operation is allowed before it executes.
 
 Backed by [Stigmer](https://stigmer.network), an open MCP knowledge network with 30,000+ contracts across 380 services.
 
@@ -16,12 +16,15 @@ pip install strands-stigmer
 
 ```python
 from strands import Agent
-from strands_stigmer import stigmer_query, stigmer_policy
+from strands_stigmer import stigmer_query, stigmer_policy, stigmer_authorize
 
-agent = Agent(tools=[stigmer_query, stigmer_policy])
+agent = Agent(tools=[stigmer_query, stigmer_policy, stigmer_authorize])
 
 # Generate a least-privilege IAM policy for a workflow
 agent("Generate the least-privilege policy for an S3 multipart upload with KMS encryption")
+
+# Pre-flight check: is s3:PutObject allowed for the current role?
+agent("Before you call S3, check whether I'm authorized to put objects")
 ```
 
 ## Tools
@@ -32,6 +35,16 @@ agent("Generate the least-privilege policy for an S3 multipart upload with KMS e
   - `operations` - explicit IAM actions or SDK symbols, comma-separated
   - `description` - describe the workflow in plain language
 - Returns: paste-ready policy grouped by service, with confidence tier and any unresolved operations
+
+`stigmer_authorize(operations="", workflow="", principal_arn="")`
+- Pre-flight authorization check. Resolves the IAM actions an operation requires, then asks AWS's own policy simulator (`SimulatePrincipalPolicy`) whether the current role (or a given principal) allows them
+- Returns `resolution` (exact|partial|unresolved) and `evaluation` (allowed|denied|unknown) as separate fields, plus `missing_permissions` and the simulator's documented caveats
+- `evaluation` is populated only when the calling environment has AWS credentials; otherwise it is `unknown` with the reason
+
+`stigmer_verify(workflow="", operations="", policy="")`
+- Feed a generated policy back to AWS's own evaluator (`SimulateCustomPolicy`) and confirm it grants exactly the intended operations and nothing extra
+- Returns `verified` (True|False|unknown), `grants_all`, and `grants_extra`
+- `verified` is populated only when the calling environment has AWS credentials
 
 `stigmer_list_workflows()`
 - List the curated named workflows available for policy generation
