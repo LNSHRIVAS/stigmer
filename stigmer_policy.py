@@ -23,9 +23,10 @@ Error shape (anchor unresolvable):
       "message": "...", "unresolved": [...], "suggestion": "..." }
 """
 from __future__ import annotations
-
 import json
+
 import os
+import re
 from collections import defaultdict
 
 PROVIDER = "aws"
@@ -156,9 +157,18 @@ def _svc_to_iam_prefix():
     data = _load_iam_map()
     service_sdk = data.get("service_sdk_mappings", {})
     result = {}
+    # From service -> SDK name mappings
     for ns, sdk_names in service_sdk.items():
         for name in sdk_names:
             result[name.lower()] = name
+    # Discover SDK prefixes actually present in the operation mappings.
+    # The iam-dataset's service_sdk_mappings is incomplete (e.g. dynamodb
+    # only maps to DynamoDBStreams, but DynamoDB.* operations exist). Scan
+    # the SDK method keys to build the authoritative prefix set.
+    for key in data.get("sdk_method_iam_mappings", {}):
+        if "." in key:
+            sdk_name, _ = key.split(".", 1)
+            result.setdefault(sdk_name.lower(), sdk_name)
     return result
 
 
@@ -286,21 +296,38 @@ def generate(workflow: str = "", operations: str | list[str] = "", description: 
 def _resolve_description(description: str) -> dict:
     """Resolve a description to operations via curated chain edges only."""
     dl = description.lower()
-    # Find the anchor: try matching known chain-starting symbols.
-    anchor = None
+
+    # Build an index: for each chain-start symbol, tokenize its operation name
+    # (CreateTable -> ["create", "table"], AssumeRole -> ["assume", "role"]).
+    anchors = []
     for sym in RESOLVED_CHAIN_EDGES:
-        parts = sym.split(".")
-        if len(parts) == 2 and parts[1].lower().replace("_", " ") in dl:
-            anchor = sym
-            break
-    if not anchor:
-        # Fall back to a keyword match over all symbols.
-        for sym in RESOLVED_CHAIN_EDGES:
-            svc, op = sym.split(".", 1)
-            if svc in dl:
-                anchor = sym
-                break
-    if not anchor:
+        svc, op = sym.split(".", 1)
+        # tokenize camelCase operation: CreateTable -> create table
+        op_tokens = re.split(r"(?=[A-Z])", op)
+        op_tokens = [t.lower() for t in op_tokens if t]
+        op_phrase = " ".join(op_tokens).strip()
+        score = 0
+        # Strong: exact multi-word operation phrase present ("create table")
+        if op_phrase and op_phrase in dl:
+            score += 5
+        # Moderate: the operation's last word present ("table", "role")
+        if op_tokens and op_tokens[-1] in dl.split():
+            score += 2
+        # Weak: any single token present
+        if any(t in dl for t in op_tokens):
+            score += 1
+        # Service agreement helps break ties
+        if svc in dl:
+            score += 1
+        anchors.append((score, sym))
+
+    if not anchors:
+        return _error([], "Could not identify the core operation for this description.")
+
+    # Pick the highest-scoring anchor; require a minimum score to avoid guessing.
+    anchors.sort(key=lambda x: -x[0])
+    best_score, anchor = anchors[0]
+    if best_score < 2:
         return _error([], "Could not identify the core operation for this description.")
 
     actions = []
