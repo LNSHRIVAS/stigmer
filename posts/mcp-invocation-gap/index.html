@@ -64,6 +64,7 @@ h1 { font-size: 2.1rem; line-height: 1.2; letter-spacing: -0.02em; margin-bottom
 .lede { font-size: 1.12rem; color: var(--dim); margin-bottom: 40px; }
 
 h2 { font-size: 1.35rem; margin: 44px 0 14px; letter-spacing: -0.01em; color: var(--text); }
+h3 { font-size: 1.1rem; margin: 30px 0 12px; letter-spacing: -0.01em; color: var(--amber-soft); }
 p { margin-bottom: 18px; }
 p a { color: var(--amber); text-decoration: none; border-bottom: 1px solid rgba(245,166,35,0.3); }
 p a:hover { border-bottom-color: var(--amber); }
@@ -144,15 +145,27 @@ verify(policy, operations) -&gt; verdict       # the provider's simulator</code>
 
     <p>None of this needs to be speculative. There is a live, public implementation of the map: <a href="/">Stigmer</a> (<code>https://stigmer.network/mcp</code>) resolves boto3 operations to their required IAM actions from machine-readable sources, generates least-privilege policies, and verifies them against AWS's own <code>SimulateCustomPolicy</code> - confirming a generated policy grants what was intended and nothing extra.</p>
 
-    <p>Two mechanisms from it show the enforcement shapes:</p>
+    <h3>Why AWS doesn't ship this: prospective versus retrospective</h3>
+
+    <p>AWS does have a policy generator. IAM Access Analyzer's <code>start_policy_generation</code> takes a principal and a CloudTrail trail with a start and end time, and infers permissions from what actually ran in that window. It is retrospective: you over-grant first, run for weeks, then narrow from the logs. An agent needs its policy before the first call, not after twenty days of CloudTrail. The map has to be derived from what an operation <em>requires</em>, which is knowable from the service definition, not from what happened to run.</p>
+
+    <h3>The map as data: an OPA bundle service</h3>
+
+    <p>The same map ships as an OPA bundle - the format Open Policy Agent already consumes. OPA's Bundle Service API is a documented HTTP contract: a server exposes a gzipped tarball with policy and data, sets an <code>ETag</code>, and replies <code>304 Not Modified</code> when nothing changed. A bundle is the exact shape of what Stigmer has: the operation-to-action map is the <em>data</em>; the rule that looks it up is a few lines of Rego.</p>
+
+    <p>So Stigmer's map is published at <code>https://stigmer.network/opa/bundle.tar.gz</code>, signed (<code>.signatures.json</code>, RS256) so OPA verifies it before activation. Any OPA instance subscribes with one config entry - a <code>services</code> and <code>bundles</code> block - and pulls the map automatically, refreshed on every poll, no reinstall. That reaches the ecosystems that already run the enforcement engine: Gatekeeper for Kubernetes admission, Conftest evaluating Terraform plan JSON in CI, OPAL, and the agent-gateway pattern from the InfoQ reference architecture, where the <code>allow_actor</code> map is hand-written and nothing derives what the policy should say. Stigmer is the input to the engine everyone already runs.</p>
+
+    <p>Three mechanisms from it show the enforcement shapes:</p>
 
     <p><strong>A pre-action authorization hook.</strong> Strands fires a <code>BeforeToolCallEvent</code> before every tool call. A hook there asks AWS's own simulator whether the current identity is allowed to perform the pending operation. On a deny it cancels the call and lists the missing permissions; on an unknown verdict it passes through by default or blocks under a fail-closed policy. That is a per-invocation check the agent frameworks currently lack, shipping in the <code>strands-stigmer</code> package today.</p>
 
     <p><strong>Scoped execution.</strong> <code>use_aws</code> runs every call against the ambient session and exposes no parameter that accepts scoped credentials, so nothing can narrow a single call. A drop-in tool, <code>stigmer_use_aws</code>, adds optional <code>role_arn</code> and <code>session_policy</code>: it assumes the role, applies the least-privilege policy, and the call's effective permissions are the intersection of the two. The scoping happens at client construction because that is the only place it can: an ambient session is fixed at process launch and cannot be narrowed after the fact.</p>
 
+    <p><strong>A policy-as-code bundle.</strong> The OPA bundle is the third shape: the map published in the format enforcement engines consume, signed, and kept current by re-sync from the service definitions. Adoption is one config line in OPA - no package install, no pull request, no approval - and every subscriber gets updates automatically. It is the same four verbs, expressed as data plus a lookup rule instead of an HTTP API.</p>
+
     <h2>What this is and is not</h2>
 
-    <p>It is the missing map, and the two enforcement shapes it enables: check-before-call and scope-the-call. It is the piece every authorization layer needs and no provider ships.</p>
+    <p>It is the missing map, and the three enforcement shapes it enables: check-before-call, scope-the-call, and policy-as-code for engines that already enforce. It is the piece every authorization layer needs and no provider ships.</p>
 
     <p>It is not a silver bullet. A check before a tool call does not replace a least-privilege role, and a least-privilege role does not replace conditions or boundaries. The layers compose. What the MCP 2026-07-28 revision did - hardening the handshake, deliberately leaving the invocation to implementers - made that composition the implementer's job. The map and the per-invocation check are the parts of the job that were missing.</p>
 
