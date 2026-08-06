@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Posts - Stigmer</title>
+<meta name="description" content="Technical essays on agent authorization, least-privilege, and the execution graph of AWS.">
+<style>
+:root {
+  --floor:      #12100c;
+  --floor-2:    #1a1710;
+  --line:       #3a3323;
+  --text:       #f2ede0;
+  --dim:        #a89a7a;
+  --dimmer:     #6e6449;
+  --amber:      #f5a623;
+  --amber-soft: #c98a2e;
+  --moss:       #7fa650;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  background: var(--floor);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+header {
+  border-bottom: 1px solid var(--line);
+  background: rgba(18, 16, 12, 0.92);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 100;
+}
+.nav-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
+.logo { font-weight: 700; letter-spacing: -0.02em; text-decoration: none; color: var(--text); }
+.logo:hover { color: var(--amber); }
+.nav-links { display: flex; gap: 18px; }
+.nav-links a { color: var(--dim); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
+.nav-links a:hover { color: var(--amber); }
+main { padding: 56px 0 40px; }
+h1 { font-size: 1.8rem; margin-bottom: 8px; letter-spacing: -0.02em; }
+.lede { color: var(--dim); margin-bottom: 40px; }
+.post-item { border-bottom: 1px solid var(--line); padding: 22px 0; }
+.post-item a { text-decoration: none; color: var(--text); }
+.post-item a h2 { font-size: 1.15rem; letter-spacing: -0.01em; margin-bottom: 6px; transition: color 0.15s; }
+.post-item a:hover h2 { color: var(--amber); }
+.post-item p { color: var(--dim); font-size: 0.92rem; }
+.post-date { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--dimmer); text-transform: uppercase; letter-spacing: 0.08em; }
+footer { border-top: 1px solid var(--line); padding: 28px 0 60px; font-family: 'JetBrains Mono', monospace; }
+footer .wrap { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+footer span { color: var(--dimmer); font-size: 0.7rem; }
+footer a { color: var(--dim); text-decoration: none; font-size: 0.7rem; }
+footer a:hover { color: var(--amber); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav-bar">
+    <a class="logo" href="/">Stigmer</a>
+    <nav class="nav-links">
+      <a href="/">Home</a>
+      <a href="/posts/">Posts</a>
+      <a href="/mcp">MCP</a>
+      <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Posts</h1>
+    <p class="lede">Technical essays on agent authorization, least-privilege, and the execution graph of AWS.</p>
+
+    <div class="post-item">
+      <div class="post-date">August 2026</div>
+      <a href="/posts/mcp-invocation-gap/">
+        <h2>The MCP spec hardened the handshake and left the invocation unguarded</h2>
+      </a>
+      <p>The 2026-07-28 MCP revision fixed authorization everywhere except the boundary where an agent actually acts: the individual tool call. The gap, its architectural shape, and a working implementation.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Stigmer. The network gets smarter every time an agent runs.</span>
+    <a href="https://github.com/anomalyco/stigmer" target="_blank">github.com/anomalyco/stigmer</a>
+  </div>
+</footer>
+</body>
+</html>
